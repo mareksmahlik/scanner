@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QR Ticket Verifier Pro</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .ios-notch { padding-top: env(safe-area-inset-top, 20px); }
+        .ios-bottom { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        
+        /* Custom overrides for the html5-qrcode video element */
+        #reader video {
+            object-fit: cover;
+            border-radius: 1.5rem;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #reader {
+            border: none !important;
+            background: transparent !important;
+        }
+        #reader__scan_region {
+            background-color: #0f172a;
+            border-radius: 1.5rem;
+            overflow: hidden;
+        }
+        #reader__dashboard_section_csr span, 
+        #reader__dashboard_section_csr a {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between overflow-hidden bg-slate-950">
+
+    <div id="app" class="flex flex-col h-full w-full max-w-md mx-auto relative shadow-2xl bg-slate-900 border-x border-slate-800">
+        
+        <!-- Top Navigation Bar -->
+        <header class="ios-notch px-5 py-4 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-20">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-qrcode text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 id="headerEventName" class="text-sm font-bold text-slate-100 truncate max-w-[200px]">Summer Rock Fest 2026</h1>
+                    <p class="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-0.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Scanner Active
+                    </p>
+                </div>
+            </div>
+            <button onclick="toggleSettings()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </header>
+
+        <main class="flex-1 relative overflow-hidden flex flex-col">
+            
+            <!-- VIEW 1: SCANNER VIEW -->
+            <div id="viewScanner" class="absolute inset-0 flex flex-col p-5 z-10 transition-all duration-300">
+                <div class="text-center pt-2 mb-6">
+                    <span class="px-4 py-1.5 bg-slate-800/80 backdrop-blur border border-slate-700/50 rounded-full text-xs font-semibold text-slate-300">
+                        <i class="fa-solid fa-camera mr-1.5 text-indigo-400"></i> Point camera at QR Code
+                    </span>
+                </div>
+
+                <!-- Scanner Viewfinder Box -->
+                <div class="relative w-full aspect-square max-w-sm mx-auto rounded-3xl overflow-hidden border-2 border-indigo-500/50 bg-slate-950 shadow-2xl flex flex-col items-center justify-center">
+                    
+                    <!-- HTML5 QR Code Container -->
+                    <div id="reader" class="w-full h-full absolute inset-0"></div>
+                    
+                    <!-- Fallback / Simulation Button Overlay (Visible if camera fails or for easy testing) -->
+                    <div id="cameraOverlay" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm pointer-events-none hidden">
+                        <i class="fa-solid fa-video-slash text-4xl text-slate-500 mb-3"></i>
+                        <p class="text-sm text-slate-400 font-medium">Camera off or unavailable</p>
+                    </div>
+
+                    <!-- Corner reticles for visual effect -->
+                    <div class="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-indigo-500 rounded-tl-xl pointer-events-none z-10"></div>
+                    <div class="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-indigo-500 rounded-tr-xl pointer-events-none z-10"></div>
+                    <div class="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-indigo-500 rounded-bl-xl pointer-events-none z-10"></div>
+                    <div class="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-indigo-500 rounded-br-xl pointer-events-none z-10"></div>
+                </div>
+
+                <div class="mt-auto pb-4 flex flex-col gap-3">
+                    <button onclick="toggleCamera()" id="btnToggleCam" class="w-full py-4 px-6 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl flex items-center justify-center space-x-2 transition active:scale-95">
+                        <i class="fa-solid fa-video"></i>
+                        <span>Start Camera</span>
+                    </button>
+                    <button onclick="simulateScan()" class="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition active:scale-95">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Simulate Scan</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 2: SUCCESS CONFIRMATION SCREEN (Hidden by default) -->
+            <div id="viewSuccess" class="absolute inset-0 bg-emerald-500 z-30 flex flex-col p-6 text-white transform translate-y-full transition-transform duration-300 ease-out">
+                <div class="text-center pt-8">
+                    <span class="px-5 py-2 bg-emerald-600/80 rounded-full text-xs font-extrabold tracking-wider uppercase border border-emerald-400/50 shadow-sm">
+                        <i class="fa-solid fa-shield-check mr-1.5"></i> Access Granted
+                    </span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center text-center flex-1 space-y-6">
+                    <!-- Big Checkmark -->
+                    <div class="w-32 h-32 bg-white text-emerald-500 rounded-full flex items-center justify-center shadow-2xl">
+                        <i class="fa-solid fa-check text-7xl"></i>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <h2 class="text-5xl font-black tracking-tight mb-2 text-white drop-shadow-md">VALID</h2>
+                        <p class="text-xl font-bold text-emerald-100 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-ticket"></i> <span id="successTicketId">TKT-89123</span>
+                        </p>
+                    </div>
+
+                    <!-- Details Card -->
+                    <div class="bg-emerald-600/50 backdrop-blur-md border border-emerald-400/30 rounded-3xl p-5 w-full max-w-sm text-left space-y-3 shadow-inner mt-4">
+                        <div class="flex justify-between items-center border-b border-emerald-400/20 pb-2">
+                            <span class="text-sm font-medium text-emerald-100">Event</span>
+                            <span id="successEventName" class="font-bold text-white text-right max-w-[150px] truncate">Summer Rock Fest</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-emerald-400/20 pb-2">
+                            <span class="text-sm font-medium text-emerald-100">Access Tier</span>
+                            <span id="successTier" class="font-bold text-white">General Admission</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-emerald-100">Scanned</span>
+                            <span id="successTime" class="font-bold text-white">19:42</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Next Scan Action - MANDATORY DISMISSAL -->
+                <div class="pb-4 mt-auto">
+                    <button onclick="dismissSuccess()" class="w-full py-5 px-6 bg-white text-emerald-600 hover:bg-emerald-50 font-extrabold rounded-2xl shadow-xl flex items-center justify-center space-x-2 transition transform active:scale-95 text-lg">
+                        <i class="fa-solid fa-qrcode"></i>
+                        <span>Scan Next Ticket</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 3: SETTINGS VIEW (Hidden by default) -->
+            <div id="viewSettings" class="absolute inset-0 bg-slate-900 z-40 flex flex-col p-6 transform translate-x-full transition-transform duration-300">
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800 ios-notch">
+                    <h2 class="text-xl font-bold flex items-center gap-2 text-white">
+                        <i class="fa-solid fa-gear text-indigo-400"></i> Settings
+                    </h2>
+                    <button onclick="toggleSettings()" class="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-6 flex-1">
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-300 ml-1">Event Name</label>
+                        <input type="text" id="inputEventName" value="Summer Rock Fest 2026" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 text-base text-white focus:outline-none focus:border-indigo-500 transition shadow-inner">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-300 ml-1">Default Access Tier</label>
+                        <select id="inputTier" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 text-base text-white focus:outline-none focus:border-indigo-500 transition appearance-none shadow-inner">
+                            <option value="General Admission">General Admission</option>
+                            <option value="VIP Backstage">VIP Backstage</option>
+                            <option value="Early Access">Early Access</option>
+                            <option value="Staff Pass">Staff Pass</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pb-8">
+                    <button onclick="saveSettings()" class="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/30 transition active:scale-95 text-lg">
+                        Save Configuration
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // App State
+        let appState = {
+            eventName: "Summer Rock Fest 2026",
+            tier: "General Admission",
+            isScanningAllowed: true, // Prevents background scanning while success screen is up
+            cameraActive: false
+        };
+
+        let html5QrCode;
+        const readerElementId = "reader";
+
+        // Initialize UI
+        document.getElementById('headerEventName').innerText = appState.eventName;
+        document.getElementById('inputEventName').value = appState.eventName;
+        document.getElementById('inputTier').value = appState.tier;
+
+        // Audio Beep Generator (Web Audio API)
+        function playSuccessSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sine';
+                // Play a pleasant high-pitched beep
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); // A6
+
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.2);
+            } catch (e) {
+                console.warn("Audio generation failed (might require user interaction first)", e);
+            }
+        }
+
+        // Camera & Scanner Logic
+        function toggleCamera() {
+            if (!appState.cameraActive) {
+                startCamera();
+            } else {
+                stopCamera();
+            }
+        }
+
+        function startCamera() {
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode(readerElementId);
+            }
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess,
+                (errorMessage) => {
+                    // Ignore continuous scan failures (happens every frame a QR isn't detected)
+                }
+            ).then(() => {
+                appState.cameraActive = true;
+                document.getElementById('cameraOverlay').classList.add('hidden');
+                document.getElementById('btnToggleCam').innerHTML = '<i class="fa-solid fa-video-slash"></i><span>Stop Camera</span>';
+                document.getElementById('btnToggleCam').classList.replace('bg-slate-800', 'bg-rose-600');
+                document.getElementById('btnToggleCam').classList.replace('hover:bg-slate-700', 'hover:bg-rose-500');
+            }).catch((err) => {
+                console.error("Failed to start camera", err);
+                alert("Camera access denied or unavailable. You can use 'Simulate Scan' to test.");
+            });
+        }
+
+        function stopCamera() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    appState.cameraActive = false;
+                    document.getElementById('cameraOverlay').classList.remove('hidden');
+                    document.getElementById('btnToggleCam').innerHTML = '<i class="fa-solid fa-video"></i><span>Start Camera</span>';
+                    document.getElementById('btnToggleCam').classList.replace('bg-rose-600', 'bg-slate-800');
+                    document.getElementById('btnToggleCam').classList.replace('hover:bg-rose-500', 'hover:bg-slate-700');
+                }).catch(err => {
+                    console.error("Failed to stop camera", err);
+                });
+            }
+        }
+
+        // Handle successful scan from real camera
+        function onScanSuccess(decodedText, decodedResult) {
+            if (!appState.isScanningAllowed) return; // Ignore scans while success screen is open
+            triggerSuccess(decodedText);
+        }
+
+        // Handle simulated scan
+        function simulateScan() {
+            if (!appState.isScanningAllowed) return;
+            const randomId = "TKT-" + Math.floor(10000 + Math.random() * 90000);
+            triggerSuccess(randomId);
+        }
+
+        // Common Success Flow
+        function triggerSuccess(scannedData) {
+            // 1. Lock scanning
+            appState.isScanningAllowed = false;
+
+            // Optional: Actually pause the camera stream processing if supported by library to save battery
+            if (html5QrCode && html5QrCode.isScanning) {
+                 if (typeof html5QrCode.pause === 'function') html5QrCode.pause();
+            }
+
+            // 2. Play Audio & Haptics
+            playSuccessSound();
+            if (navigator.vibrate) navigator.vibrate([100]);
+
+            // 3. Update UI Data
+            // If the QR contains random text, we just use it, or generate a formatted ID if it's too long
+            const displayId = scannedData.length > 15 ? scannedData.substring(0, 15) + "..." : scannedData;
+            
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + 
+                            now.getMinutes().toString().padStart(2, '0');
+
+            document.getElementById('successTicketId').innerText = displayId;
+            document.getElementById('successEventName').innerText = appState.eventName;
+            document.getElementById('successTier').innerText = appState.tier;
+            document.getElementById('successTime').innerText = timeStr;
+
+            // 4. Show Screen
+            document.getElementById('viewSuccess').style.transform = 'translateY(0%)';
+        }
+
+        // Mandatory manual dismiss
+        function dismissSuccess() {
+            // 1. Hide Screen
+            document.getElementById('viewSuccess').style.transform = 'translateY(100%)';
+            
+            // 2. Resume scanning immediately
+            if (html5QrCode && html5QrCode.isScanning) {
+                if (typeof html5QrCode.resume === 'function') html5QrCode.resume();
+            }
+            
+            // 3. Unlock scanning flag
+            setTimeout(() => {
+                appState.isScanningAllowed = true;
+            }, 300); // small buffer to let animation finish and prevent instant double-scan
+        }
+
+        // Settings Navigation
+        function toggleSettings() {
+            const view = document.getElementById('viewSettings');
+            const isHidden = view.style.transform === '' || view.style.transform === 'translateX(100%)';
+            if (isHidden) {
+                // Populate current settings
+                document.getElementById('inputEventName').value = appState.eventName;
+                document.getElementById('inputTier').value = appState.tier;
+                view.style.transform = 'translateX(0%)';
+            } else {
+                view.style.transform = 'translateX(100%)';
+            }
+        }
+
+        function saveSettings() {
+            const newName = document.getElementById('inputEventName').value.trim();
+            const newTier = document.getElementById('inputTier').value;
+
+            if (newName) {
+                appState.eventName = newName;
+                document.getElementById('headerEventName').innerText = newName;
+            }
+            appState.tier = newTier;
+
+            toggleSettings();
+        }
+    </script>
+</body>
+</html>
